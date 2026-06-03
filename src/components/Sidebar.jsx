@@ -92,8 +92,9 @@ export default function Sidebar({
     <div className="flex flex-col gap-3 p-3 overflow-y-auto shrink-0 h-screen"
       style={{ width: 210, background: '#0f172a', borderRight: '1px solid #1e293b' }}>
 
-      <div style={{ color: '#60a5fa', fontWeight: 700, fontSize: 18, paddingTop: 4 }}>
-        HandSheet
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
+        <img src="/logo.svg" alt="" width={20} height={20} />
+        <span style={{ color: '#60a5fa', fontWeight: 700, fontSize: 18 }}>HandSheet</span>
       </div>
 
       {/* Page tabs */}
@@ -114,12 +115,18 @@ export default function Sidebar({
 
       {/* Front sheet upload */}
       {activePage === 'front' && (
-        <div>
-          <label style={labelStyle}>Upload front sheet</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={labelStyle}>Front sheet</label>
           <input ref={sheetInputRef} type="file" accept="image/jpeg,image/png"
             style={{ display: 'none' }} onChange={handleSheetUpload} />
           <button onClick={() => sheetInputRef.current.click()} style={btnStyle('#334155')}>
             {frontImageURL ? 'Change image' : 'Upload image'}
+          </button>
+          <button
+            onClick={() => setFrontImageURL('/rv-datasheet.jpg')}
+            style={btnStyle('#1e3a5f')}
+            title="Uses /public/rv-datasheet.jpg">
+            Use RV template
           </button>
         </div>
       )}

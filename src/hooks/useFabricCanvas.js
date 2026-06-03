@@ -2,10 +2,13 @@ import { useEffect, useRef } from 'react'
 import { fabric } from 'fabric'
 
 export const CANVAS_W = 560
-export const CANVAS_H = Math.round(560 * 250 / 176) // 795 — preserves 176:250 ratio
+export const CANVAS_H = Math.round(560 * 250 / 176)
 
-export function useFabricCanvas(canvasElRef, backgroundImageURL) {
+export function useFabricCanvas(canvasElRef, backgroundImageURL, onSelectionChange) {
   const fabricRef = useRef(null)
+  const onSelRef = useRef(onSelectionChange)
+
+  useEffect(() => { onSelRef.current = onSelectionChange }, [onSelectionChange])
 
   useEffect(() => {
     if (!canvasElRef.current) return
@@ -17,6 +20,24 @@ export function useFabricCanvas(canvasElRef, backgroundImageURL) {
       selection: true,
     })
     fabricRef.current = canvas
+
+    const notify = () => {
+      const obj = canvas.getActiveObject()
+      if (obj && (obj.type === 'i-text' || obj.type === 'textbox')) {
+        onSelRef.current?.({ fontFamily: obj.fontFamily, fontSize: obj.fontSize,
+          fill: obj.fill, text: obj.text, object: obj })
+      } else {
+        onSelRef.current?.(null)
+      }
+    }
+
+    canvas.on('selection:created', notify)
+    canvas.on('selection:updated', notify)
+    canvas.on('selection:cleared', () => onSelRef.current?.(null))
+    canvas.on('text:changed', (e) => {
+      onSelRef.current?.({ fontFamily: e.target.fontFamily, fontSize: e.target.fontSize,
+        fill: e.target.fill, text: e.target.text, object: e.target })
+    })
 
     const handleKeyDown = (e) => {
       if (
@@ -43,12 +64,12 @@ export function useFabricCanvas(canvasElRef, backgroundImageURL) {
   useEffect(() => {
     const canvas = fabricRef.current
     if (!canvas) return
-
     if (backgroundImageURL) {
       fabric.Image.fromURL(backgroundImageURL, (img) => {
+        if (!img || !img.width) return
         img.scaleToWidth(CANVAS_W)
         canvas.setBackgroundImage(img, () => canvas.renderAll())
-      })
+      }, { crossOrigin: 'anonymous' })
     } else {
       canvas.setBackgroundImage(null, () => {
         canvas.backgroundColor = 'white'

@@ -4,6 +4,17 @@ import { fabric } from 'fabric'
 export const CANVAS_W = 560
 export const CANVAS_H = Math.round(560 * 250 / 176)
 
+// Global selection style — amber, visible on white sheets
+Object.assign(fabric.Object.prototype, {
+  borderColor: '#f59e0b',
+  cornerColor: '#ffffff',
+  cornerStrokeColor: '#f59e0b',
+  cornerSize: 9,
+  transparentCorners: false,
+  padding: 5,
+  borderScaleFactor: 1.5,
+})
+
 export function useFabricCanvas(canvasElRef, backgroundImageURL, onSelectionChange) {
   const fabricRef = useRef(null)
   const onSelRef = useRef(onSelectionChange)
@@ -18,6 +29,9 @@ export function useFabricCanvas(canvasElRef, backgroundImageURL, onSelectionChan
       height: CANVAS_H,
       backgroundColor: 'white',
       selection: true,
+      selectionColor: 'rgba(245,158,11,0.08)',
+      selectionBorderColor: '#f59e0b',
+      selectionLineWidth: 1,
     })
     fabricRef.current = canvas
 
@@ -34,10 +48,13 @@ export function useFabricCanvas(canvasElRef, backgroundImageURL, onSelectionChan
     canvas.on('selection:created', notify)
     canvas.on('selection:updated', notify)
     canvas.on('selection:cleared', () => onSelRef.current?.(null))
+    // text:changed fires while user types inside IText — keep code panel in sync
     canvas.on('text:changed', (e) => {
       onSelRef.current?.({ fontFamily: e.target.fontFamily, fontSize: e.target.fontSize,
         fill: e.target.fill, text: e.target.text, object: e.target })
     })
+    // object:modified fires after resize/rotate — re-sync sidebar values
+    canvas.on('object:modified', notify)
 
     const handleKeyDown = (e) => {
       if (

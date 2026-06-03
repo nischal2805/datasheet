@@ -11,7 +11,6 @@ const CanvasArea = forwardRef(function CanvasArea(
   const frontFabric = useFabricCanvas(frontEl, frontImageURL, onSelectionChange)
   const backFabric = useFabricCanvas(backEl, null, onSelectionChange)
 
-  // Deselect when switching pages
   useEffect(() => {
     if (frontFabric.current) {
       frontFabric.current.discardActiveObject()
@@ -29,39 +28,103 @@ const CanvasArea = forwardRef(function CanvasArea(
     getFrontCanvas: () => frontFabric.current,
     getBackCanvas: () => backFabric.current,
 
-    // Click-to-place mode: cursor becomes crosshair, next click places text
     enterAddTextMode: (fontFamily, fontSize, fill) => {
       const canvas = activePage === 'front' ? frontFabric.current : backFabric.current
       if (!canvas) return
+
       canvas.defaultCursor = 'crosshair'
       canvas.hoverCursor = 'crosshair'
-      canvas.isDrawingMode = false
+      canvas.selection = false   // prevent fabric rubber-band selection during draw
 
-      const handleUp = (opt) => {
-        // Only place if not dragging an existing object
-        if (opt.target) { cleanup(); return }
+      let startX = 0, startY = 0, started = false
+      let preview = null
+
+      const onDown = (opt) => {
+        if (opt.target) return  // hit existing object — let fabric handle, exit on mouseup
         const p = canvas.getPointer(opt.e)
-        const text = new fabric.IText('Type here...', {
-          left: p.x, top: p.y,
-          fontFamily, fontSize, fill,
-          angle: +(Math.random() * 2 - 1).toFixed(1),
-          editable: true,
+        startX = p.x; startY = p.y; started = true
+        preview = new fabric.Rect({
+          left: startX, top: startY, width: 1, height: 1,
+          fill: 'rgba(245,158,11,0.07)',
+          stroke: '#f59e0b', strokeWidth: 1,
+          strokeDashArray: [5, 4],
+          selectable: false, evented: false,
         })
-        canvas.add(text)
-        canvas.setActiveObject(text)
-        canvas.renderAll()
-        text.enterEditing()
-        text.selectAll()
-        cleanup()
+        canvas.add(preview)
       }
+
+      const onMove = (opt) => {
+        if (!started || !preview) return
+        const p = canvas.getPointer(opt.e)
+        const w = p.x - startX, h = p.y - startY
+        preview.set({
+          left: w >= 0 ? startX : p.x,
+          top:  h >= 0 ? startY : p.y,
+          width: Math.abs(w),
+          height: Math.abs(h),
+        })
+        canvas.renderAll()
+      }
+
+      const onUp = (opt) => {
+        if (!started) { cleanup(); return }
+
+        const p = canvas.getPointer(opt.e)
+        const w = Math.abs(p.x - startX)
+        const h = Math.abs(p.y - startY)
+
+        if (preview) { canvas.remove(preview); preview = null }
+        cleanup()
+
+        if (w > 15 || h > 15) {
+          // Drag → Textbox that fills the drawn region
+          const left = Math.min(startX, p.x)
+          const top  = Math.min(startY, p.y)
+          const box = new fabric.Textbox('Type here...', {
+            left, top,
+            width: Math.max(w, 60),
+            fontFamily, fontSize, fill,
+            lineHeight: 1.4, editable: true,
+          })
+          canvas.add(box)
+          canvas.setActiveObject(box)
+          canvas.renderAll()
+          box.enterEditing()
+          box.selectAll()
+        } else {
+          // Click (no drag) → IText at exact point
+          const text = new fabric.IText('Type here...', {
+            left: startX, top: startY,
+            fontFamily, fontSize, fill,
+            angle: +(Math.random() * 2 - 1).toFixed(1),
+            editable: true,
+          })
+          canvas.add(text)
+          canvas.setActiveObject(text)
+          canvas.renderAll()
+          text.enterEditing()
+          text.selectAll()
+        }
+      }
+
+      const onEsc = (e) => { if (e.key === 'Escape') cleanup() }
 
       const cleanup = () => {
         canvas.defaultCursor = 'default'
         canvas.hoverCursor = 'move'
-        canvas.off('mouse:up', handleUp)
+        canvas.selection = true
+        if (preview) { canvas.remove(preview); preview = null }
+        canvas.off('mouse:down', onDown)
+        canvas.off('mouse:move', onMove)
+        canvas.off('mouse:up', onUp)
+        window.removeEventListener('keydown', onEsc)
+        canvas.renderAll()
       }
 
-      canvas.on('mouse:up', handleUp)
+      canvas.on('mouse:down', onDown)
+      canvas.on('mouse:move', onMove)
+      canvas.on('mouse:up', onUp)
+      window.addEventListener('keydown', onEsc)
     },
   }), [activePage])
 

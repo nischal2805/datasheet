@@ -23,7 +23,10 @@ export default function Sidebar({
     if (!canvas) return
     const obj = canvas.getActiveObject()
     if (obj && (obj.type === 'i-text' || obj.type === 'textbox')) {
+      // fabric ignores most style changes while in editing mode — exit first
+      if (obj.isEditing) obj.exitEditing()
       obj.set(props)
+      obj.setCoords()
       canvas.renderAll()
     }
   }

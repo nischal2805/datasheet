@@ -11,6 +11,7 @@ export default function Sidebar({
   fontSize, setFontSize,
   textColor, setTextColor,
   canvasRef,
+  hasSelection,   // true when a text box is selected
 }) {
   const sheetInputRef = useRef(null)
   const fontInputRef = useRef(null)
@@ -127,6 +128,16 @@ export default function Sidebar({
       </div>
 
       <hr style={{ borderColor: '#1e293b', margin: '2px 0' }} />
+
+      {/* Selection indicator */}
+      <div style={{
+        padding: '5px 8px', borderRadius: 6, fontSize: 11,
+        background: hasSelection ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${hasSelection ? '#f59e0b44' : '#1e293b'}`,
+        color: hasSelection ? '#fbbf24' : '#475569',
+      }}>
+        {hasSelection ? '● Box selected — editing below' : '○ No box selected'}
+      </div>
 
       {/* Font */}
       <div>

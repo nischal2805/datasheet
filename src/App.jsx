@@ -12,9 +12,10 @@ export default function App() {
   const [customFonts, setCustomFonts] = useState([])
   const [fontSize, setFontSize] = useState(16)
   const [textColor, setTextColor] = useState('#1a1a2e')
-  const [codePanelText, setCodePanelText] = useState(null) // null = nothing selected
+  const [codePanelText, setCodePanelText] = useState(null)
+  const [hasSelection, setHasSelection] = useState(false)
   const canvasRef = useRef(null)
-  const selectedObjRef = useRef(null) // fabric object ref, not React state
+  const selectedObjRef = useRef(null)
 
   useEffect(() => {
     FONT_PRESETS.forEach(f => loadGoogleFont(f))
@@ -23,6 +24,7 @@ export default function App() {
   // Called by canvas whenever selection changes
   const handleSelectionChange = useCallback((info) => {
     selectedObjRef.current = info?.object ?? null
+    setHasSelection(!!info)
     setCodePanelText(info ? info.text : null)
     if (info) {
       setSelectedFont(info.fontFamily || 'Caveat')
@@ -57,6 +59,7 @@ export default function App() {
     canvas.renderAll()
     // Manually sync since programmatic setActiveObject may not fire event in time
     selectedObjRef.current = box
+    setHasSelection(true)
     setCodePanelText(box.text)
   }, [selectedFont, fontSize, textColor])
 
@@ -70,6 +73,7 @@ export default function App() {
         fontSize={fontSize} setFontSize={setFontSize}
         textColor={textColor} setTextColor={setTextColor}
         canvasRef={canvasRef}
+        hasSelection={hasSelection}
       />
       <CanvasArea
         ref={canvasRef}

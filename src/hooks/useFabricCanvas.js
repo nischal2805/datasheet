@@ -47,7 +47,14 @@ export function useFabricCanvas(canvasElRef, backgroundImageURL, onSelectionChan
 
     canvas.on('selection:created', notify)
     canvas.on('selection:updated', notify)
-    canvas.on('selection:cleared', () => onSelRef.current?.(null))
+    // Defer null notification — exitEditing() can briefly fire selection:cleared
+    // before selection:created fires again. If object is re-selected by the time
+    // the frame runs, we skip the null so panels stay in sync.
+    canvas.on('selection:cleared', () => {
+      requestAnimationFrame(() => {
+        if (!canvas.getActiveObject()) onSelRef.current?.(null)
+      })
+    })
     // text:changed fires while user types inside IText — keep code panel in sync
     canvas.on('text:changed', (e) => {
       onSelRef.current?.({ fontFamily: e.target.fontFamily, fontSize: e.target.fontSize,
@@ -84,7 +91,13 @@ export function useFabricCanvas(canvasElRef, backgroundImageURL, onSelectionChan
     if (backgroundImageURL) {
       fabric.Image.fromURL(backgroundImageURL, (img) => {
         if (!img || !img.width) return
-        img.scaleToWidth(CANVAS_W)
+        // Stretch to fill entire canvas — ignore source aspect ratio
+        img.set({
+          scaleX: CANVAS_W / img.width,
+          scaleY: CANVAS_H / img.height,
+          left: 0, top: 0,
+          originX: 'left', originY: 'top',
+        })
         canvas.setBackgroundImage(img, () => canvas.renderAll())
       }, { crossOrigin: 'anonymous' })
     } else {
